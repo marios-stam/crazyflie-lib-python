@@ -56,6 +56,7 @@ class ParamExample:
         self._cf.disconnected.add_callback(self._disconnected)
         self._cf.connection_failed.add_callback(self._connection_failed)
         self._cf.connection_lost.add_callback(self._connection_lost)
+        self._cf.param.all_updated.add_callback(self._all_updated)
 
         print('Connecting to %s' % link_uri)
 
@@ -70,9 +71,26 @@ class ParamExample:
 
         random.seed()
 
+    def _all_updated(self):
+        """ This callback is called form the Crazyflie API when all the 
+            parameters of a Crazyflie have been updated."""
+
+        # Create a new random value [0.00,1.00] for pid_attitude.pitch_kd
+        # and set it
+        pkd = random.random()
+        print('')
+        print('Write: pid_attitude.pitch_kd={:.2f}'.format(pkd))
+        self._cf.param.add_update_callback(group='pid_attitude',
+                                           name='pitch_kd',
+                                           cb=self._a_pitch_kd_callback)
+
+        # When setting a value the parameter is automatically read back
+        # and the registered callbacks will get the updated value
+        self._cf.param.set_value('pid_attitude.pitch_kd','{:.2f}'.format(pkd))
+
     def _connected(self, link_uri):
         """ This callback is called form the Crazyflie API when a Crazyflie
-        has been connected and the TOCs have been downloaded."""
+        has been connected."""
         print('Connected to %s' % link_uri)
 
         # Print the param TOC
@@ -101,29 +119,16 @@ class ParamExample:
         """Generic callback registered for all the groups"""
         print('{0}: {1}'.format(name, value))
 
-        # Remove each parameter from the list and close the link when
-        # all are fetched
+        # Remove each parameter from the list
         self._param_check_list.remove(name)
         if len(self._param_check_list) == 0:
             print('Have fetched all parameter values.')
 
-            # First remove all the group callbacks
+            # Remove all the group callbacks
             for g in self._param_groups:
                 self._cf.param.remove_update_callback(group=g,
                                                       cb=self._param_callback)
 
-            # Create a new random value [0.00,1.00] for pid_attitude.pitch_kd
-            # and set it
-            pkd = random.random()
-            print('')
-            print('Write: pid_attitude.pitch_kd={:.2f}'.format(pkd))
-            self._cf.param.add_update_callback(group='pid_attitude',
-                                               name='pitch_kd',
-                                               cb=self._a_pitch_kd_callback)
-            # When setting a value the parameter is automatically read back
-            # and the registered callbacks will get the updated value
-            self._cf.param.set_value('pid_attitude.pitch_kd',
-                                     '{:.2f}'.format(pkd))
 
     def _a_pitch_kd_callback(self, name, value):
         """Callback for pid_attitude.pitch_kd"""
